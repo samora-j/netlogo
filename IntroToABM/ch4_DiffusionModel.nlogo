@@ -2,6 +2,10 @@ extensions[nw]
 
 turtles-own  [ adopt? ]
 
+breed [influentials influential]
+breed [regulars regular]
+
+
 to new-run
   reset-ticks
   reset-turtles
@@ -9,6 +13,8 @@ to new-run
 end
 
 to new-world
+  set-default-shape regulars "person"
+  set-default-shape influentials "star"
   ca
   if network = "random"[
     nw:generate-random turtles links m .1[
@@ -25,6 +31,12 @@ to new-world
 
   repeat 30 [ layout-spring turtles links 0.2 5 1 ] ;; lays the nodes in a triangle
 
+  ask n-of (frac-influential * m) turtles[
+    set breed influentials
+  ]
+  ask turtles with [breed != influentials][
+    set breed regulars
+  ]
   reset-turtles
   reset-ticks
 end
@@ -49,16 +61,46 @@ to go
 end
 
 to adopt
-  let total-neighbors link-neighbors
-  let neighbors-adopted link-neighbors with [adopt?]
   if random-float 100.0 < broadcast [
     set adopt? true
     set color red
   ]
-  if not adopt? and random-float 100.0 < (social * ( count neighbors-adopted / count total-neighbors)) [
-    set adopt? true
-    set color pink
+  if breed = influentials[
+    let total-neighbors link-neighbors with [breed = influentials]
+    let neighbors-adopted link-neighbors with [adopt? and breed = influentials]
+    if count total-neighbors > 0[
+      if not adopt? and random-float 100.0 < (social * ( count neighbors-adopted / count total-neighbors)) [
+        set adopt? true
+        set color pink
+      ]
+    ]
   ]
+
+  if breed = regulars[
+    let inf-total-neighbors link-neighbors with [breed = influentials]
+    let inf-neighbors-adopted link-neighbors with [adopt? and breed = influentials]
+    let reg-total-neighbors link-neighbors with [breed = regulars]
+    let reg-neighbors-adopted link-neighbors with [adopt? and breed = regulars]
+
+    let influential-influence 0
+    let regular-influence 0
+
+    if count inf-total-neighbors > 0 [
+      set influential-influence count inf-neighbors-adopted / count inf-total-neighbors
+    ]
+    if count reg-total-neighbors > 0 [
+      set regular-influence count reg-neighbors-adopted / count reg-total-neighbors
+    ]
+    let regular-weight 1 - influential-weight
+    let neighbor-influence (influential-influence * influential-weight) + (regular-influence * regular-weight)
+
+    if not adopt? and random-float 100.0 < (social * neighbor-influence) [
+      set adopt? true
+      set color pink
+    ]
+  ]
+
+
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -105,9 +147,9 @@ HORIZONTAL
 
 BUTTON
 5
-230
+310
 92
-263
+343
 new world
 new-world
 NIL
@@ -122,9 +164,9 @@ NIL
 
 BUTTON
 7
-279
+359
 72
-312
+392
 NIL
 go
 T
@@ -168,10 +210,10 @@ NIL
 HORIZONTAL
 
 PLOT
-10
-339
-210
-489
+240
+460
+440
+610
 Adoption
 NIL
 NIL
@@ -186,10 +228,10 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot count turtles with [ adopt? ]"
 
 PLOT
-10
-504
-210
-654
+480
+460
+680
+610
 social vs broadcast
 NIL
 NIL
@@ -206,9 +248,9 @@ PENS
 
 SLIDER
 10
-140
+220
 182
-173
+253
 connections
 connections
 0
@@ -221,9 +263,9 @@ HORIZONTAL
 
 BUTTON
 100
-230
+310
 177
-263
+343
 new run
 new-run
 NIL
@@ -238,13 +280,43 @@ NIL
 
 CHOOSER
 10
-180
+260
 148
-225
+305
 network
 network
 "random" "p-a"
+0
+
+SLIDER
+10
+145
+182
+178
+frac-influential
+frac-influential
+0
+0
+0.0
+0.05
 1
+NIL
+HORIZONTAL
+
+SLIDER
+10
+180
+182
+213
+influential-weight
+influential-weight
+0
+1
+0.1
+0.05
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
