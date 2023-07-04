@@ -1,4 +1,4 @@
-globals [wealth]
+;; globals [ broadcast]
 turtles-own  [ adopt? ]
 
 to setup
@@ -15,26 +15,31 @@ to setup
 end
 
 
-
-
 to go
-  ask turtles [
+  ask turtles with [not adopt?] [
     adopt
   ]
   tick
+  if count turtles with [ adopt? ] = count turtles[
+    stop
+  ]
 end
 
 to adopt
-  if random 10 = 1[
+  if random-float 100.0 < broadcast [
     set adopt? true
     set color red
+  ]
+  if not adopt? and random-float 100.0 < (social * ( count turtles with [ adopt? ] / count turtles)) [
+    set adopt? true
+    set color pink
   ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-210
+240
 10
-647
+677
 448
 -1
 -1
@@ -59,25 +64,25 @@ ticks
 30.0
 
 SLIDER
-16
-18
-188
-51
+10
+95
+182
+128
 m
 m
 0
 100
-50.0
+89.0
 1
 1
 NIL
 HORIZONTAL
 
 BUTTON
-16
-64
-81
-97
+15
+136
+80
+169
 NIL
 setup
 NIL
@@ -91,10 +96,10 @@ NIL
 1
 
 BUTTON
-18
-113
-83
-146
+17
+185
+82
+218
 NIL
 go
 T
@@ -106,6 +111,73 @@ NIL
 NIL
 NIL
 1
+
+SLIDER
+10
+10
+182
+43
+broadcast
+broadcast
+0
+100
+2.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+10
+50
+182
+83
+social
+social
+0
+100
+63.0
+1
+1
+NIL
+HORIZONTAL
+
+PLOT
+20
+245
+220
+395
+Adoption
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "plot count turtles with [ adopt? ]"
+
+PLOT
+20
+410
+220
+560
+social vs broadcast
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -2674135 true "" "plot count turtles with [color =  red]"
+"pen-1" 1.0 0 -2064490 true "" "plot count turtles with [color = pink]"
 
 @#$#@#$#@
 ## WHAT IS IT?
