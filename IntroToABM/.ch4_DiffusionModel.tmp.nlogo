@@ -1,19 +1,31 @@
 turtles-own  [ adopt? ]
 
-to setup
+to new-run
+  reset-ticks
+  reset-turtles
+
+end
+
+to new-world
   ca
   crt m [
-    set adopt? false
     setxy random-xcor random-ycor
-    set color white
     set shape "person"
   ]
+  reset-turtles
   ask turtles [
     create-link-with one-of other turtles
   ]
-
   reset-ticks
 end
+
+to reset-turtles
+  ask turtles [
+    set adopt? false
+    set color white
+  ]
+end
+
 
 
 to go
@@ -33,7 +45,7 @@ to adopt
     set adopt? true
     set color red
   ]
-  if not adopt? and random-float 100.0 < (social * ( count  / count turtles)) [
+  if not adopt? and random-float 100.0 < (social * ( count neighbors-adopted / count total-neighbors)) [
     set adopt? true
     set color pink
   ]
@@ -84,10 +96,10 @@ HORIZONTAL
 BUTTON
 10
 210
-75
+97
 243
-NIL
-setup
+new world
+new-world
 NIL
 1
 T
@@ -139,7 +151,7 @@ social
 social
 0
 100
-63.0
+13.0
 1
 1
 NIL
@@ -196,6 +208,23 @@ connections
 1
 NIL
 HORIZONTAL
+
+BUTTON
+105
+210
+182
+243
+new run
+new-run
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
