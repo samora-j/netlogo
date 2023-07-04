@@ -1,3 +1,5 @@
+extensions[nw]
+
 turtles-own  [ adopt? ]
 
 to new-run
@@ -8,14 +10,22 @@ end
 
 to new-world
   ca
-  crt m [
-    setxy random-xcor random-ycor
-    set shape "person"
+  if network = "random"[
+    nw:generate-random turtles links m .1[
+      setxy random-xcor random-ycor
+      set shape "person"
+    ]
   ]
+  if network = "p-a"[
+    nw:generate-preferential-attachment turtles links m 1[
+      setxy random-xcor random-ycor
+      set shape "person"
+    ]
+  ]
+
+  repeat 30 [ layout-spring turtles links 0.2 5 1 ] ;; lays the nodes in a triangle
+
   reset-turtles
-  ask turtles [
-    create-link-with one-of other turtles
-  ]
   reset-ticks
 end
 
@@ -87,17 +97,17 @@ m
 m
 0
 100
-89.0
+81.0
 1
 1
 NIL
 HORIZONTAL
 
 BUTTON
-10
-210
-97
-243
+5
+230
+92
+263
 new world
 new-world
 NIL
@@ -111,10 +121,10 @@ NIL
 1
 
 BUTTON
-12
-259
-77
-292
+7
+279
+72
+312
 NIL
 go
 T
@@ -158,10 +168,10 @@ NIL
 HORIZONTAL
 
 PLOT
-15
-319
-215
-469
+10
+339
+210
+489
 Adoption
 NIL
 NIL
@@ -176,10 +186,10 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot count turtles with [ adopt? ]"
 
 PLOT
-15
-484
-215
-634
+10
+504
+210
+654
 social vs broadcast
 NIL
 NIL
@@ -196,24 +206,24 @@ PENS
 
 SLIDER
 10
-135
+140
 182
-168
+173
 connections
 connections
 0
 100
-6.0
+8.0
 1
 1
 NIL
 HORIZONTAL
 
 BUTTON
-105
-210
-182
-243
+100
+230
+177
+263
 new run
 new-run
 NIL
@@ -224,6 +234,16 @@ NIL
 NIL
 NIL
 NIL
+1
+
+CHOOSER
+10
+180
+148
+225
+network
+network
+"random" "p-a"
 1
 
 @#$#@#$#@
