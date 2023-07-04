@@ -1,4 +1,3 @@
-;; globals [ broadcast]
 turtles-own  [ adopt? ]
 
 to setup
@@ -8,7 +7,9 @@ to setup
     setxy random-xcor random-ycor
     set color white
     set shape "person"
-
+  ]
+  ask turtles [
+    create-link-with one-of other turtles
   ]
 
   reset-ticks
@@ -26,11 +27,13 @@ to go
 end
 
 to adopt
+  let total-neighbors link-neighbors
+  let neighbors-adopted link-neighbors with [adopt?]
   if random-float 100.0 < broadcast [
     set adopt? true
     set color red
   ]
-  if not adopt? and random-float 100.0 < (social * ( count turtles with [ adopt? ] / count turtles)) [
+  if not adopt? and random-float 100.0 < (social * ( count neighbors-adopted / count total-neighbors)) [
     set adopt? true
     set color pink
   ]
@@ -50,8 +53,8 @@ GRAPHICS-WINDOW
 1
 1
 0
-1
-1
+0
+0
 1
 -16
 16
@@ -79,10 +82,10 @@ NIL
 HORIZONTAL
 
 BUTTON
-15
-136
-80
-169
+10
+210
+75
+243
 NIL
 setup
 NIL
@@ -96,10 +99,10 @@ NIL
 1
 
 BUTTON
-17
-185
-82
-218
+12
+259
+77
+292
 NIL
 go
 T
@@ -136,17 +139,17 @@ social
 social
 0
 100
-63.0
+36.0
 1
 1
 NIL
 HORIZONTAL
 
 PLOT
-20
-245
-220
-395
+15
+319
+215
+469
 Adoption
 NIL
 NIL
@@ -161,10 +164,10 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot count turtles with [ adopt? ]"
 
 PLOT
-20
-410
-220
-560
+15
+484
+215
+634
 social vs broadcast
 NIL
 NIL
@@ -178,6 +181,21 @@ false
 PENS
 "default" 1.0 0 -2674135 true "" "plot count turtles with [color =  red]"
 "pen-1" 1.0 0 -2064490 true "" "plot count turtles with [color = pink]"
+
+SLIDER
+10
+135
+182
+168
+connections
+connections
+0
+100
+6.0
+1
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
