@@ -1,124 +1,87 @@
-extensions[nw]
+turtles-own [org-level competence bias disc halo the-ceo]
+globals [N the-vacancy]
+breed [employees employee]
+breed [CEOs CEO]
+breed [vacancies vacancy]
 
-turtles-own  [ adopt? ]
 
-breed [influentials influential]
-breed [regulars regular]
-
-
-to new-run
-  reset-ticks
-  reset-turtles
-  clear-all-plots
-end
-
-to new-world
-  set-default-shape regulars "person"
-  set-default-shape influentials "star"
-  ca
-  if network = "random"[
-    nw:generate-random turtles links m .1[
-      setxy random-xcor random-ycor
-      set shape "person"
-    ]
-  ]
-  if network = "p-a"[
-    nw:generate-preferential-attachment turtles links m 1[
-      setxy random-xcor random-ycor
-      set shape "person"
-    ]
-  ]
-
-  repeat 30 [ layout-spring turtles links 0.2 5 1 ] ;; lays the nodes in a triangle
-
-  ask n-of (frac-influential * m) turtles[
-    set breed influentials
-  ]
-  ask turtles with [breed != influentials][
-    set breed regulars
-  ]
-  reset-turtles
+to SetupOrg
+  clear-all
+  create-heirarchy-part 1 nobody
+  repeat 30 [ layout-spring turtles links 1 1 1 ]
+  SetupEmployees
   reset-ticks
 end
 
-to reset-turtles
-  ask turtles [
-    set adopt? false
+to create-heirarchy-part [level manager]
+  ifelse manager = nobody
+    [create-CEOs 1[
+      set org-level level
+      set manager self]]
+    [create-employees 1 [
+      create-link-to manager
+      set org-level level
+      set manager self]]
+
+  if level < OrgLevels [
+    set level  (level + 1)
+    repeat TeamSize [create-heirarchy-part level manager]
+  ]
+end
+
+to SetupEmployees
+  set N count turtles
+  ask turtles[
+    set competence random-normal 50 10
+    set bias random-normal 50 10
+    set disc random-normal 50 10
+    set halo random-normal 50 10
+    set shape "circle"
+    set size (competence / 100)
+    set color 75
+    if org-level = 1[
+      set color red
+    ]
+  ]
+  create-a-vacancy
+end
+
+
+to create-a-vacancy
+  ask one-of employees [
+    set breed vacancies
     set color white
+    set shape "circle"
+    ;;select manager
+    ;;ask out-link-neighbors [ set color pink ]
   ]
+
 end
 
 
-
-to go
-  ask turtles with [not adopt?] [
-    adopt
+to Go
+  if count vacancies = 0[
+    create-a-vacancy
   ]
-  tick
-  if count turtles with [ adopt? ] = count turtles[
-    stop
-  ]
-end
-
-to adopt
-  if random-float 100.0 < broadcast [
-    set adopt? true
-    set color red
-  ]
-  if breed = influentials[
-    let total-neighbors link-neighbors with [breed = influentials]
-    let neighbors-adopted link-neighbors with [adopt? and breed = influentials]
-    if count total-neighbors > 0[
-      if not adopt? and random-float 100.0 < (social * ( count neighbors-adopted / count total-neighbors)) [
-        set adopt? true
-        set color pink
-      ]
-    ]
-  ]
-
-  if breed = regulars[
-    let inf-total-neighbors link-neighbors with [breed = influentials]
-    let inf-neighbors-adopted link-neighbors with [adopt? and breed = influentials]
-    let reg-total-neighbors link-neighbors with [breed = regulars]
-    let reg-neighbors-adopted link-neighbors with [adopt? and breed = regulars]
-
-    let influential-influence 0
-    let regular-influence 0
-
-    if count inf-total-neighbors > 0 [
-      set influential-influence count inf-neighbors-adopted / count inf-total-neighbors
-    ]
-    if count reg-total-neighbors > 0 [
-      set regular-influence count reg-neighbors-adopted / count reg-total-neighbors
-    ]
-    let regular-weight 1 - influential-weight
-    let neighbor-influence (influential-influence * influential-weight) + (regular-influence * regular-weight)
-
-    if not adopt? and random-float 100.0 < (social * neighbor-) [
-      set adopt? true
-      set color pink
-    ]
-  ]
-
 
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-240
+195
 10
-677
-448
+708
+524
 -1
 -1
-13.0
+15.303030303030303
 1
 10
 1
 1
 1
 0
-0
-0
+1
+1
 1
 -16
 16
@@ -131,143 +94,42 @@ ticks
 30.0
 
 SLIDER
+15
 10
-95
-182
-128
-m
-m
-0
-100
-81.0
-1
-1
-NIL
-HORIZONTAL
-
-BUTTON
-5
-310
-92
-343
-new world
-new-world
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-BUTTON
-7
-359
-72
-392
-NIL
-go
-T
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
-SLIDER
-10
-10
-182
+187
 43
-broadcast
-broadcast
-0
-100
-2.0
+OrgLevels
+OrgLevels
+2
+5
+3.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-10
-50
-182
-83
-social
-social
-0
-100
-13.0
-1
-1
-NIL
-HORIZONTAL
-
-PLOT
-240
-460
-440
-610
-Adoption
-NIL
-NIL
-0.0
-10.0
-0.0
-10.0
-true
-false
-"" ""
-PENS
-"default" 1.0 0 -16777216 true "" "plot count turtles with [ adopt? ]"
-
-PLOT
-480
-460
-680
-610
-social vs broadcast
-NIL
-NIL
-0.0
-10.0
-0.0
-10.0
-true
-false
-"" ""
-PENS
-"default" 1.0 0 -2674135 true "" "plot count turtles with [color =  red]"
-"pen-1" 1.0 0 -2064490 true "" "plot count turtles with [color = pink]"
-
-SLIDER
-10
-220
-182
-253
-connections
-connections
-0
-100
-8.0
+15
+49
+187
+82
+TeamSize
+TeamSize
+3
+20
+4.0
 1
 1
 NIL
 HORIZONTAL
 
 BUTTON
-100
-310
-177
-343
-new run
-new-run
+15
+104
+103
+137
+Setup Org
+SetupOrg
 NIL
 1
 T
@@ -278,47 +140,55 @@ NIL
 NIL
 1
 
-CHOOSER
-10
-260
-148
-305
-network
-network
-"random" "p-a"
-0
-
-SLIDER
-10
-145
-182
-178
-frac-influential
-frac-influential
-0
-0
-0.1
-0.05
-1
+BUTTON
+15
+289
+78
+322
 NIL
-HORIZONTAL
+Go
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
 
-SLIDER
-10
-180
-182
-213
-influential-weight
-influential-weight
+BUTTON
+15
+189
+137
+222
+Setup Employees
+SetupEmployees
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+MONITOR
+130
+94
+187
+139
+N
+N
 0
 1
-0.7
-0.05
-1
-NIL
-HORIZONTAL
+11
 
 @#$#@#$#@
+## TODO
+not all (except leaves) are managers
+
 ## WHAT IS IT?
 
 (a general understanding of what the model is trying to show or explain)
@@ -326,6 +196,13 @@ HORIZONTAL
 ## HOW IT WORKS
 
 (what rules the agents use to create the overall behavior of the model)
+
+
+Check if there are vacancies,
+if there are none, create a vacancy by selecting an employee at random and replacing with a vacancy.
+Recruit, either internally externally
+
+
 
 ## HOW TO USE IT
 

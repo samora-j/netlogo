@@ -139,7 +139,7 @@ m
 m
 0
 100
-81.0
+100.0
 1
 1
 NIL
@@ -203,7 +203,7 @@ social
 social
 0
 100
-13.0
+1.0
 1
 1
 NIL
@@ -664,6 +664,34 @@ NetLogo 6.3.0
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
+<experiments>
+  <experiment name="experiment" repetitions="10" runMetricsEveryStep="true">
+    <setup>new-world</setup>
+    <go>go</go>
+    <metric>count turtles with [adopt?]</metric>
+    <metric>count regulars with [adopt?]</metric>
+    <metric>count influentials with [adopt?]</metric>
+    <enumeratedValueSet variable="connections">
+      <value value="8"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="frac-influential">
+      <value value="0"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="broadcast">
+      <value value="2"/>
+    </enumeratedValueSet>
+    <steppedValueSet variable="social" first="0.1" step="0.1" last="1"/>
+    <enumeratedValueSet variable="network">
+      <value value="&quot;random&quot;"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="influential-weight">
+      <value value="0.1"/>
+    </enumeratedValueSet>
+    <enumeratedValueSet variable="m">
+      <value value="100"/>
+    </enumeratedValueSet>
+  </experiment>
+</experiments>
 @#$#@#$#@
 @#$#@#$#@
 default
