@@ -1,5 +1,5 @@
 extensions [ nw ]
-turtles-own [org-level org-weight competence bias disc halo]
+turtles-own [org-level org-weight competence bias disc halo score]
 globals [N candidates selected-candidate max-org-competence abs-org-competence org-competence]
 breed [employees employee]
 breed [CEOs CEO]
@@ -114,14 +114,34 @@ to source-internal-canditates-for [the-vacancy recruiting-manager]
   set candidates candidates with [ nw:distance-to recruiting-manager != false]    ;; Remove those who do not have a reporting line to the recruiting manager
   set candidates candidates with [ nw:distance-to recruiting-manager = 2]         ;; This might be redundant, but remove those who are further away than 2 links
 end
-
-to select-candidate-by [recruiting-manager]
-  set selected-candidate one-of candidates with-max [competence]                  ;; For now, the only thing we can do is select the most competent
-                                                                                  ;; In the future, here is where we can implment the more 'human' strategies
+                                                                                  ;;============================================================================;;
+to select-candidate-by [recruiting-manager]                                       ;; This is where we can implment different recruitment strategies             ;;
+  if RecruitmentStrategy = "Competence"
+  [ select-candidate-by-competence ]
+  if RecruitmentStrategy = "Random"
+  [ select-candidate-by-random ]
+  if RecruitmentStrategy = "Affinity"
+  [ select-candidate-by-affinity recruiting-manager]
   ask selected-candidate[
-    set shape "circle"
+  set shape "circle"
   ]
 end
+
+to select-candidate-by-competence                                                 ;; This represents the best case situation, omniscient recruiting managers.
+  set selected-candidate one-of candidates with-max [competence]
+end
+
+to select-candidate-by-random                                                     ;; This represents the worst case, chooseing randomly
+  set selected-candidate one-of candidates
+end
+
+to select-candidate-by-affinity [recruiting-manager]                              ;; The recruiting manager selects the candidate most similar to them in regard to the halo-trait
+  ask candidates[
+    set score abs ( halo - [halo] of recruiting-manager )
+  ]
+  set selected-candidate one-of candidates with-min [score]
+end
+
 
 to place-selected-candidate-in [the-vacancy recruiting-manager]
   let next-vacancy-direct-reports nobody
@@ -140,7 +160,7 @@ to place-selected-candidate-in [the-vacancy recruiting-manager]
 
   ask selected-candidate[
     if breed != externals[                                   ;; If the selected candidate is internal, we need to save the links, and coordinates
-      set is-internal-recruitment true                                   ;; in order to connect the next vacancy properly
+      set is-internal-recruitment true                       ;; in order to connect the next vacancy properly
     ]
     if one-of out-link-neighbors = the-vacancy[              ;; If the manager of the selected candidate, is where the vacancy was
       set is-in-team-promotion true                          ;; this means that the selected candidate will be the next recruiting manager.
@@ -373,8 +393,8 @@ CHOOSER
 210
 RecruitmentStrategy
 RecruitmentStrategy
-"Competence" "Random" "Affinity"
-0
+"Competence" "Random" "Affinity" "Discernment+Affinity"
+3
 
 PLOT
 195
@@ -410,6 +430,42 @@ NIL
 NIL
 NIL
 1
+
+PLOT
+720
+10
+1225
+260
+Top Level Diversity
+NIL
+NIL
+0.0
+100.0
+0.0
+100.0
+true
+false
+"set-plot-x-range 0 100\nset-plot-y-range 0 count employees with [org-level = 2]\nset-histogram-num-bars 11" ""
+PENS
+"default" 1.0 1 -5298144 true "" "histogram [halo] of employees with [org-level = 2]"
+
+PLOT
+720
+280
+1230
+525
+Bottom Level Diversity
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+false
+"set-plot-x-range 0 100\nset-plot-y-range 0 count employees with [org-level = OrgLevels]\nset-histogram-num-bars 11" ""
+PENS
+"default" 1.0 1 -16777216 true "" "histogram [halo] of employees with [org-level = OrgLevels]"
 
 @#$#@#$#@
 ## TODO
