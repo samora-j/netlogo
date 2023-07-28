@@ -1,6 +1,6 @@
 extensions [ nw ]
-turtles-own [org-level competence bias disc halo]
-globals [N candidates selected-candidate]
+turtles-own [org-level org-weight competence bias disc halo]
+globals [N candidates selected-candidate max-org-competence abs-org-competence org-competence]
 breed [employees employee]
 breed [CEOs CEO]
 breed [vacancies vacancy]
@@ -13,24 +13,31 @@ to SetupOrg
   create-heirarchy-part 1 nobody
   repeat 30 [ layout-spring turtles links 1 1 1 ]
   SetupEmployees
-  reset-ticks
 end
 
 to create-heirarchy-part [level manager]
   ifelse manager = nobody
     [create-CEOs 1[
       set org-level level
+      set org-weight 0
       set manager self]]
     [create-employees 1 [
       create-link-to manager
       set org-level level
+      set org-weight 1
       set manager self]]
 
   if level < OrgLevels [
     set level  (level + 1)
     repeat TeamSize [create-heirarchy-part level manager]
   ]
+
+
+
 end
+
+
+
 
 to assign-traits-to [an-employee]
   ask an-employee[
@@ -43,6 +50,9 @@ end
 
 to update-appearance-of [an-employee]
   ask an-employee[
+    ifelse breed = externals
+      [set hidden? true]
+      [set hidden? false]
     set shape "circle"
     set size (competence / 100)
     set color 75
@@ -69,6 +79,9 @@ to SetupEmployees
     update-appearance-of self
   ]
   create-a-vacancy
+  calculate-org-competence
+  clear-all-plots
+  reset-ticks
 end
 
 to create-a-vacancy
@@ -108,31 +121,34 @@ to place-selected-candidate-in [the-vacancy recruiting-manager]
   let next-vacancy-direct-reports nobody
   let next-vacancy-manager nobody
   let next-vacancy-org-level 0
+  let next-vacancy-org-weight 0
   let next-vacancy-x 0
   let next-vacancy-y 0
   let this-vacancy-direct-reports nobody
   let this-vacancy-org-level 0
+  let this-vacancy-org-weight 0
   let this-vacancy-x 0
   let this-vacancy-y 0
-  let is-internal false
-  let is-in-team false
+  let is-internal-recruitment false
+  let is-in-team-promotion false
 
   ask selected-candidate[
-    if breed != externals[                                 ;; If the selected candidate is internal, we need to save the links, and coordinates
-      set is-internal true                                 ;; in order to connect the next vacancy properly
+    if breed != externals[                                   ;; If the selected candidate is internal, we need to save the links, and coordinates
+      set is-internal-recruitment true                                   ;; in order to connect the next vacancy properly
     ]
-    if one-of out-link-neighbors = the-vacancy[            ;; the manager of the selected candidate, is where the vacancy was
-      set is-in-team true
-      print "promotion in own team"
+    if one-of out-link-neighbors = the-vacancy[              ;; If the manager of the selected candidate, is where the vacancy was
+      set is-in-team-promotion true                          ;; this means that the selected candidate will be the next recruiting manager.
     ]
   ]
-  if not is-in-team[
 
-  if is-internal[
+  if is-internal-recruitment[
     ask selected-candidate[
       set next-vacancy-direct-reports in-link-neighbors
-      set next-vacancy-manager one-of out-link-neighbors
+      ifelse is-in-team-promotion
+        [set next-vacancy-manager selected-candidate]         ;; Internal promotion => The selected candidate creates a vacancy they will have to recruit for
+        [set next-vacancy-manager one-of out-link-neighbors]
       set next-vacancy-org-level org-level
+      set next-vacancy-org-weight org-weight
       set next-vacancy-x xcor
       set next-vacancy-y ycor
       ask my-out-links [die]
@@ -140,12 +156,12 @@ to place-selected-candidate-in [the-vacancy recruiting-manager]
     ]
   ]
 
-
   ask the-vacancy[
     set this-vacancy-direct-reports in-link-neighbors
     set this-vacancy-x xcor
     set this-vacancy-y ycor
     set this-vacancy-org-level org-level
+    set this-vacancy-org-weight org-weight
     ask my-out-links [die]
     ask my-in-links [die]
   ]
@@ -157,6 +173,7 @@ to place-selected-candidate-in [the-vacancy recruiting-manager]
     set xcor this-vacancy-x
     set ycor this-vacancy-y
     set org-level this-vacancy-org-level
+    set org-weight this-vacancy-org-weight
     create-link-to recruiting-manager
     if this-vacancy-direct-reports != nobody[
       ask this-vacancy-direct-reports[
@@ -165,11 +182,12 @@ to place-selected-candidate-in [the-vacancy recruiting-manager]
     ]
   ]
 
-  if is-internal[                                                                ;; If the selected candidate is internal, we place the next vacancy in it's spot
+  if is-internal-recruitment[                                                                ;; If the selected candidate is internal, we place the next vacancy in it's spot
     ask the-vacancy[
       set xcor next-vacancy-x
       set ycor next-vacancy-y
       set org-level next-vacancy-org-level
+      set org-weight next-vacancy-org-weight
       create-link-to next-vacancy-manager
       if next-vacancy-direct-reports != nobody[
         ask next-vacancy-direct-reports[
@@ -178,11 +196,10 @@ to place-selected-candidate-in [the-vacancy recruiting-manager]
       ]
     ]
   ]
-  if not is-internal[
+  if not is-internal-recruitment[
     ask the-vacancy [die]
   ]
   set selected-candidate nobody
-  ]
 end
 
 to recruit-for [the-vacancy]
@@ -200,6 +217,18 @@ to recruit-for [the-vacancy]
   place-selected-candidate-in the-vacancy recruiting-manager
 end
 
+to calculate-org-competence
+  set org-competence 0
+  set max-org-competence 0
+  set abs-org-competence 0
+  ask employees[
+    set abs-org-competence abs-org-competence + (competence * org-weight)
+    set max-org-competence max-org-competence + (100 * org-weight)
+  ]
+  set org-competence (abs-org-competence / max-org-competence) * 100
+end
+
+
 
 to Go
   if count vacancies = 0[
@@ -208,6 +237,8 @@ to Go
     if count vacancies = 1[
       recruit-for one-of vacancies
   ]
+  calculate-org-competence
+  tick
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -261,7 +292,7 @@ TeamSize
 TeamSize
 3
 20
-3.0
+6.0
 1
 1
 NIL
@@ -289,7 +320,7 @@ BUTTON
 265
 185
 298
-NIL
+Go once
 Go
 NIL
 1
@@ -336,13 +367,50 @@ CHOOSER
 210
 RecruitmentStrategy
 RecruitmentStrategy
-"Competence" "Affinity" "Halo"
+"Competence" "Random" "Affinity"
 0
+
+PLOT
+195
+540
+710
+690
+Competence
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "plot org-competence"
+
+BUTTON
+15
+310
+185
+343
+Go
+Go
+T
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
 
 @#$#@#$#@
 ## TODO
 not all (except leaves) are managers
 it's a bit risky to use sliders for calculation
+color employees by halo trait to visualize diversity
+set shape by if they have been recruited
 
 ## CAVEATS
 We only recuit externally at the lowest level, then only external candidates are considered.
