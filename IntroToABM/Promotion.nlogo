@@ -58,9 +58,10 @@ to update-appearance-of [an-employee]
     ifelse breed = externals
       [set hidden? true]
       [set hidden? false]
-    set shape "circle"
+    set shape "square"
     set size (competence / 100)
-    set color 75
+    ;;set color 75
+    set color scale-color green halo 30 70
     if breed = CEOs[
       set color red
     ]
@@ -92,8 +93,8 @@ end
 to create-a-vacancy
   ask one-of employees [
     set breed vacancies
-    set color white
-    set shape "circle"
+    set color blue
+    set shape "square"
   ]
 end
 
@@ -118,7 +119,7 @@ to select-candidate-by [recruiting-manager]
   set selected-candidate one-of candidates with-max [competence]                  ;; For now, the only thing we can do is select the most competent
                                                                                   ;; In the future, here is where we can implment the more 'human' strategies
   ask selected-candidate[
-    set color blue
+    set shape "circle"
   ]
 end
 
@@ -174,7 +175,7 @@ to place-selected-candidate-in [the-vacancy recruiting-manager]
   ask selected-candidate[
     set breed employees
     update-appearance-of self
-    set color blue
+    set shape "circle"
     set xcor this-vacancy-x
     set ycor this-vacancy-y
     set org-level this-vacancy-org-level
@@ -414,8 +415,7 @@ NIL
 ## TODO
 not all (except leaves) are managers
 it's a bit risky to use sliders for calculation
-color employees by halo trait to visualize diversity
-set shape by if they have been recruited
+implement halo
 
 ## CAVEATS
 We only recuit externally at the lowest level, then only external candidates are considered.
