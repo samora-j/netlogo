@@ -17,27 +17,32 @@ end
 
 to create-heirarchy-part [level manager]
   ifelse manager = nobody
-    [create-CEOs 1[
+    [create-CEOs 1 [
       set org-level level
       set org-weight 0
       set manager self]]
     [create-employees 1 [
       create-link-to manager
       set org-level level
-      set org-weight 1
-      set manager self]]
-
+      set org-weight 0
+      set manager self
+      let reporting-chain nw:turtles-on-path-to one-of CEOs
+      foreach reporting-chain[
+        the-employee -> ask the-employee [add-to-org-weight self]
+      ]
+    ]
+  ]
   if level < OrgLevels [
     set level  (level + 1)
     repeat TeamSize [create-heirarchy-part level manager]
   ]
-
-
-
 end
 
-
-
+to add-to-org-weight[an-employee]
+  ask an-employee[
+    set org-weight org-weight + 1
+  ]
+end
 
 to assign-traits-to [an-employee]
   ask an-employee[
@@ -225,7 +230,7 @@ to calculate-org-competence
     set abs-org-competence abs-org-competence + (competence * org-weight)
     set max-org-competence max-org-competence + (100 * org-weight)
   ]
-  set org-competence (abs-org-competence / max-org-competence
+  set org-competence (abs-org-competence / max-org-competence) * 100
 end
 
 
@@ -291,7 +296,7 @@ SLIDER
 TeamSize
 TeamSize
 3
-20
+7
 6.0
 1
 1
