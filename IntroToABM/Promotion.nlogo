@@ -1,11 +1,14 @@
-turtles-own [org-level competence bias disc halo the-ceo]
-globals [N the-vacancy]
+extensions [ nw ]
+turtles-own [org-level competence bias disc halo]
+globals [N candidates selected-candidate]
 breed [employees employee]
 breed [CEOs CEO]
 breed [vacancies vacancy]
+breed [externals external]
 
 
 to SetupOrg
+  nw:set-context turtles links
   clear-all
   create-heirarchy-part 1 nobody
   repeat 30 [ layout-spring turtles links 1 1 1 ]
@@ -29,33 +32,172 @@ to create-heirarchy-part [level manager]
   ]
 end
 
-to SetupEmployees
-  set N count turtles
-  ask turtles[
+to assign-traits-to [an-employee]
+  ask an-employee[
     set competence random-normal 50 10
     set bias random-normal 50 10
     set disc random-normal 50 10
     set halo random-normal 50 10
+  ]
+end
+
+to update-appearance-of [an-employee]
+  ask an-employee[
     set shape "circle"
     set size (competence / 100)
     set color 75
-    if org-level = 1[
+    if breed = CEOs[
       set color red
     ]
   ]
-  create-a-vacancy
 end
 
+to SetupEmployees
+  ask externals [die]
+  set N count turtles
+  ask employees[
+    assign-traits-to self
+    update-appearance-of self
+  ]
+  ask CEOs[
+    assign-traits-to self
+    update-appearance-of self
+  ]
+  ask vacancies[
+    set breed employees
+    assign-traits-to self
+    update-appearance-of self
+  ]
+  create-a-vacancy
+end
 
 to create-a-vacancy
   ask one-of employees [
     set breed vacancies
     set color white
     set shape "circle"
-    ;;select manager
-    ;;ask out-link-neighbors [ set color pink ]
+  ]
+end
+
+to source-external-canditates-for [the-vacancy ]
+  let external-x-patch -16
+  create-externals TeamSize ^ 2[              ;; Create as many external candidates as we would have had in the internal senario
+    assign-traits-to self
+    update-appearance-of self
+    move-to patch external-x-patch -16
+    set external-x-patch external-x-patch + 1
+  ]
+  set candidates externals
+end
+
+to source-internal-canditates-for [the-vacancy recruiting-manager]
+  set candidates employees with [org-level = ( ([org-level] of the-vacancy) + 1)] ;; Start with all employees on the level below the vacancy
+  set candidates candidates with [ nw:distance-to recruiting-manager != false]    ;; Remove those who do not have a reporting line to the recruiting manager
+  set candidates candidates with [ nw:distance-to recruiting-manager = 2]         ;; This might be redundant, but remove those who are further away than 2 links
+end
+
+to select-candidate-by [recruiting-manager]
+  set selected-candidate one-of candidates with-max [competence]                  ;; For now, the only thing we can do is select the most competent
+                                                                                  ;; In the future, here is where we can implment the more 'human' strategies
+  ask selected-candidate[
+    set color blue
+  ]
+end
+
+to place-selected-candidate-in [the-vacancy recruiting-manager]
+  let next-vacancy-direct-reports nobody
+  let next-vacancy-manager nobody
+  let next-vacancy-org-level 0
+  let next-vacancy-x 0
+  let next-vacancy-y 0
+  let this-vacancy-direct-reports nobody
+  let this-vacancy-org-level 0
+  let this-vacancy-x 0
+  let this-vacancy-y 0
+  let is-internal false
+  let is-in-team false
+
+  ask selected-candidate[
+    if breed != externals[                                 ;; If the selected candidate is internal, we need to save the links, and coordinates
+      set is-internal true                                 ;; in order to connect the next vacancy properly
+    ]
+    if one-of out-link-neighbors = the-vacancy[            ;; the manager of the selected candidate, is where the vacancy was
+      set is-in-team true
+      print "promotion in own team"
+    ]
+  ]
+  if not is-in-team[
+
+  if is-internal[
+    ask selected-candidate[
+      set next-vacancy-direct-reports in-link-neighbors
+      set next-vacancy-manager one-of out-link-neighbors
+      set next-vacancy-org-level org-level
+      set next-vacancy-x xcor
+      set next-vacancy-y ycor
+      ask my-out-links [die]
+      ask my-in-links [die]
+    ]
   ]
 
+
+  ask the-vacancy[
+    set this-vacancy-direct-reports in-link-neighbors
+    set this-vacancy-x xcor
+    set this-vacancy-y ycor
+    set this-vacancy-org-level org-level
+    ask my-out-links [die]
+    ask my-in-links [die]
+  ]
+
+  ask selected-candidate[
+    set breed employees
+    update-appearance-of self
+    set color blue
+    set xcor this-vacancy-x
+    set ycor this-vacancy-y
+    set org-level this-vacancy-org-level
+    create-link-to recruiting-manager
+    if this-vacancy-direct-reports != nobody[
+      ask this-vacancy-direct-reports[
+        create-link-to selected-candidate
+      ]
+    ]
+  ]
+
+  if is-internal[                                                                ;; If the selected candidate is internal, we place the next vacancy in it's spot
+    ask the-vacancy[
+      set xcor next-vacancy-x
+      set ycor next-vacancy-y
+      set org-level next-vacancy-org-level
+      create-link-to next-vacancy-manager
+      if next-vacancy-direct-reports != nobody[
+        ask next-vacancy-direct-reports[
+          create-link-to the-vacancy
+        ]
+      ]
+    ]
+  ]
+  if not is-internal[
+    ask the-vacancy [die]
+  ]
+  set selected-candidate nobody
+  ]
+end
+
+to recruit-for [the-vacancy]
+  ask externals [die]
+  set candidates nobody
+  set selected-candidate nobody
+
+  let recruiting-manager one-of [out-link-neighbors] of the-vacancy
+  ifelse ([org-level] of the-vacancy = OrgLevels)[                   ;; If we are at the bottom of the org chart, source external candidates
+    source-external-canditates-for the-vacancy
+  ][
+    source-internal-canditates-for the-vacancy recruiting-manager    ;; If the vacancy is on any other level, we source internally
+  ]
+  select-candidate-by recruiting-manager
+  place-selected-candidate-in the-vacancy recruiting-manager
 end
 
 
@@ -63,7 +205,9 @@ to Go
   if count vacancies = 0[
     create-a-vacancy
   ]
-
+    if count vacancies = 1[
+      recruit-for one-of vacancies
+  ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -102,7 +246,7 @@ OrgLevels
 OrgLevels
 2
 5
-3.0
+4.0
 1
 1
 NIL
@@ -117,7 +261,7 @@ TeamSize
 TeamSize
 3
 20
-4.0
+3.0
 1
 1
 NIL
@@ -125,9 +269,9 @@ HORIZONTAL
 
 BUTTON
 15
-104
-103
-137
+95
+115
+140
 Setup Org
 SetupOrg
 NIL
@@ -142,9 +286,9 @@ NIL
 
 BUTTON
 15
-289
-78
-322
+265
+185
+298
 NIL
 Go
 NIL
@@ -159,9 +303,9 @@ NIL
 
 BUTTON
 15
-189
-137
-222
+220
+185
+255
 Setup Employees
 SetupEmployees
 NIL
@@ -176,18 +320,33 @@ NIL
 
 MONITOR
 130
-94
+95
 187
-139
+140
 N
 N
 0
 1
 11
 
+CHOOSER
+15
+165
+185
+210
+RecruitmentStrategy
+RecruitmentStrategy
+"Competence" "Affinity" "Halo"
+0
+
 @#$#@#$#@
 ## TODO
 not all (except leaves) are managers
+it's a bit risky to use sliders for calculation
+
+## CAVEATS
+We only recuit externally at the lowest level, then only external candidates are considered.
+We do not consider lateral moves or demotion
 
 ## WHAT IS IT?
 
