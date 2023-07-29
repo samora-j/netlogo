@@ -1,5 +1,5 @@
 extensions [ nw ]
-turtles-own [org-level org-weight competence bias disc halo score]
+turtles-own [org-level org-weight competence bias discernment halo score]
 globals [N candidates selected-candidate max-org-competence abs-org-competence org-competence]
 breed [employees employee]
 breed [CEOs CEO]
@@ -11,8 +11,42 @@ to SetupOrg
   nw:set-context turtles links
   clear-all
   create-heirarchy-part 1 nobody
-  repeat 30 [ layout-spring turtles links 1 1 1 ]
+  layout-organisation
   SetupEmployees
+end
+
+to layout-organisation
+  set N count turtles
+
+  (ifelse
+    OrgLayout = "Spring Network"[
+      repeat 30 [ layout-spring turtles links 1 1 1 ]
+    ]
+    OrgLayout = "Radial Network"[
+      layout-radial turtles links one-of CEOs
+    ]
+    OrgLayout = "Grid"[
+      let d sqrt ( ((world-width + 1)*(world-height + 1)) / N)
+      let level-list (range 2 (OrgLevels + 1))
+      foreach level-list
+        [ this-level ->
+          ;;print word "Level: " this-level
+          let level-total count employees with [org-level = this-level]
+          let level-fraction level-total / N
+          let row 0
+          let col 0
+          let i 0
+          ask employees with [org-level = this-level][
+            ;; put on grid
+            set i i + 1
+            set col i mod ( world-width )
+            if col = 0 [set row row + 1]
+            set xcor ( d * (0.5 + col) ) - ( world-width / 2 )
+            set ycor world-height - ( d * ( (0.5 + row) + level-base)) - ( world-height / 2)
+          ]
+          set level-base level-base + row + 1
+        ]
+    ])
 end
 
 to create-heirarchy-part [level manager]
@@ -48,7 +82,7 @@ to assign-traits-to [an-employee]
   ask an-employee[
     set competence random-normal 50 10
     set bias random-normal 50 10
-    set disc random-normal 50 10
+    set discernment random-normal 50 10
     set halo random-normal 50 10
   ]
 end
@@ -65,12 +99,16 @@ to update-appearance-of [an-employee]
     if breed = CEOs[
       set color red
     ]
+    if OrgLayout = "Grid"[
+      ask my-links [ hide-link ]
+      if breed = CEOs[
+        set hidden? true
+    ]]
   ]
 end
 
 to SetupEmployees
   ask externals [die]
-  set N count turtles
   ask employees[
     assign-traits-to self
     update-appearance-of self
@@ -116,14 +154,29 @@ to source-internal-canditates-for [the-vacancy recruiting-manager]
 end
                                                                                   ;;============================================================================;;
 to select-candidate-by [recruiting-manager]                                       ;; This is where we can implment different recruitment strategies             ;;
-  if RecruitmentStrategy = "Competence"
-  [ select-candidate-by-competence ]
-  if RecruitmentStrategy = "Random"
-  [ select-candidate-by-random ]
-  if RecruitmentStrategy = "Affinity"
-  [ select-candidate-by-affinity recruiting-manager]
+  (ifelse
+    RecruitmentStrategy = "Competence"[
+      select-candidate-by-competence
+    ]
+    RecruitmentStrategy = "Random"[
+      select-candidate-by-random
+    ]
+    RecruitmentStrategy = "Affinity"[
+      select-candidate-by-affinity recruiting-manager
+    ]
+    RecruitmentStrategy = "Binary Discernment"[
+      select-candidate-by-binary-discernment recruiting-manager
+    ]
+    RecruitmentStrategy = "Continuous Discernment"[
+      select-candidate-by-continuous-discernment recruiting-manager
+    ]
+    [
+      select-candidate-by-random
+      print "unknown strategy"
+    ])
+
   ask selected-candidate[
-  set shape "circle"
+    set shape "circle"
   ]
 end
 
@@ -141,6 +194,23 @@ to select-candidate-by-affinity [recruiting-manager]                            
   ]
   set selected-candidate one-of candidates with-min [score]
 end
+
+to select-candidate-by-binary-discernment [recruiting-manager]                    ;; Dependingon on if the recruiting managers discernment trait is high or low,
+  ifelse [discernment] of recruiting-manager > 50                                 ;; they either select the candidate most similar to them (regarding halo),
+    [ set selected-candidate one-of candidates with-max [competence] ]            ;; or select the most competent candidate.
+    [ ask candidates[
+      set score abs ( halo - [halo] of recruiting-manager )
+      ]
+      set selected-candidate one-of candidates with-min [score] ]
+end
+
+to select-candidate-by-continuous-discernment [recruiting-manager]                ;; use both competence and affiliation
+  ask candidates[
+      set score abs (100 - ( halo - [halo] of recruiting-manager ))
+      ]
+  set selected-candidate one-of candidates with-max [score]
+end
+
 
 
 to place-selected-candidate-in [the-vacancy recruiting-manager]
@@ -194,8 +264,6 @@ to place-selected-candidate-in [the-vacancy recruiting-manager]
 
   ask selected-candidate[
     set breed employees
-    update-appearance-of self
-    set shape "circle"
     set xcor this-vacancy-x
     set ycor this-vacancy-y
     set org-level this-vacancy-org-level
@@ -206,6 +274,8 @@ to place-selected-candidate-in [the-vacancy recruiting-manager]
         create-link-to selected-candidate
       ]
     ]
+    update-appearance-of self
+    set shape "circle"
   ]
 
   if is-internal-recruitment[                                                                ;; If the selected candidate is internal, we place the next vacancy in it's spot
@@ -297,13 +367,13 @@ ticks
 SLIDER
 15
 10
-187
+185
 43
 OrgLevels
 OrgLevels
 2
 5
-4.0
+5.0
 1
 1
 NIL
@@ -311,14 +381,14 @@ HORIZONTAL
 
 SLIDER
 15
-49
-187
-82
+45
+185
+78
 TeamSize
 TeamSize
 3
 7
-6.0
+5.0
 1
 1
 NIL
@@ -326,9 +396,9 @@ HORIZONTAL
 
 BUTTON
 15
-95
+130
 115
-140
+175
 Setup Org
 SetupOrg
 NIL
@@ -343,9 +413,9 @@ NIL
 
 BUTTON
 15
-265
+305
 185
-298
+338
 Go once
 Go
 NIL
@@ -360,9 +430,9 @@ NIL
 
 BUTTON
 15
-220
+260
 185
-255
+295
 Setup Employees
 SetupEmployees
 NIL
@@ -377,9 +447,9 @@ NIL
 
 MONITOR
 130
-95
+130
 187
-140
+175
 N
 N
 0
@@ -388,12 +458,12 @@ N
 
 CHOOSER
 15
-165
+205
 185
-210
+250
 RecruitmentStrategy
 RecruitmentStrategy
-"Competence" "Random" "Affinity" "Discernment"
+"Competence" "Random" "Affinity" "Binary Discernment" "Continuous Discernment"
 2
 
 PLOT
@@ -416,9 +486,9 @@ PENS
 
 BUTTON
 15
-310
+350
 185
-343
+383
 Go
 Go
 T
@@ -467,15 +537,28 @@ false
 PENS
 "default" 1.0 1 -16777216 true "" "histogram [halo] of employees with [org-level = OrgLevels]"
 
+CHOOSER
+15
+80
+185
+125
+OrgLayout
+OrgLayout
+"Spring Network" "Radial Network" "Grid"
+2
+
 @#$#@#$#@
 ## TODO
 not all (except leaves) are managers
 it's a bit risky to use sliders for calculation
-implement halo
+implement continuous bias
+change halo coloring scheme
+implement grid layout
 
 ## CAVEATS
 We only recuit externally at the lowest level, then only external candidates are considered.
 We do not consider lateral moves or demotion
+Changing the layou of the org does not change the structure, only the vidual representation
 
 ## WHAT IS IT?
 
