@@ -503,7 +503,7 @@ CHOOSER
 RecruitmentStrategy
 RecruitmentStrategy
 "Competence" "Random" "Affinity" "Affinity or Competence" "Discernment"
-0
+4
 
 PLOT
 195
@@ -590,7 +590,16 @@ OrgLayout
 @#$#@#$#@
 ## WHAT IS IT?
 
-A model to explore how different ways to select employees for promotion, might impact the composition of the overall organisation.
+A model of an organisation, used to explore how different ways to select employees for promotion, might impact the composition of the overall organisation.
+
+The main agents are employees and the main course of events is someone quitting, creating a vacany which is filled be a recruiting manager.
+
+Two main outputs observed are:
+
+* A fictive trait called "halo" representing diversity, where "variation is better"
+
+* A trait "competence" wich is meant to positively impact work, where "higher is better"
+
 
 ## HOW IT WORKS
 
@@ -599,7 +608,7 @@ Then when the model is run, it does the following:
 
 * Check if there are vacancies
 
-* If there are none, create a vacancy by selecting an employee at random and replacing with a vacancy.
+* If there are none, create a vacancy by selecting an employee at random and replacing with a vacancy. This represents someone quiting. 
 
 * Recruit, internally if the vacancy is on anything but the bottom level, otherwise externally.
 
@@ -643,6 +652,16 @@ Then when the model is run, it does the following:
 * If you want to start over, you can press _Setup Employees_. This will not change the organisation structure, but it will reset the properties of all the employees to the default settings. 
 
 ## THINGS TO NOTICE
+
+About the agents
+
+* **Employees** are the main agent type. There is not special agent type for managers or recruiting managers. As soon as en employee has in-bound links, they are a manager and act as a recruiting manager when a vacancy is created in their team.
+
+* **CEO** At the top of the heirarchy there is one agent of the type CEO.The CEO has the same properties (traits) as all other employees and they are involved as recruiting anager when there is a vacancy on the level below. What is unique about the CEO is that they do not quit in this model, so they are constant. 
+
+* **Externals** These agents have the same properties as employees and CEO, except that they are not linked to the organisation. They are created in order to have a number of candidates to choose from when recruiting on the lowest level. Since this model only handles promotion and there are no internal candidates below the lowest level.
+
+* **Vacancies** This is a conceptually different agent, since it does not represent an employee but instead represents a position in the organisation that is to be filled by an employee or external candidate through recruitment.
 
 What is visualised in the world:
 
