@@ -26,25 +26,23 @@ to layout-organisation
       layout-radial turtles links one-of CEOs
     ]
     OrgLayout = "Grid"[
-      let d sqrt ( ((world-width + 1)*(world-height + 1)) / N)
+      let d  sqrt ( ( (world-width - 2) * (world-height - 2) ) / N )
+      let row-col-max ((world-width - 1)/ d)
       let level-list (range 2 (OrgLevels + 1))
+      let row 0
+      let col 0
+
       foreach level-list
         [ this-level ->
-          ;;print word "Level: " this-level
-          let level-total count employees with [org-level = this-level]
-          let level-fraction level-total / N
-          let row 0
-          let col 0
-          let i 0
           ask employees with [org-level = this-level][
-            ;; put on grid
-            set i i + 1
-            set col i mod ( world-width )
-            if col = 0 [set row row + 1]
-            set xcor ( d * (0.5 + col) ) - ( world-width / 2 )
-            set ycor world-height - ( d * ( (0.5 + row) + level-base)) - ( world-height / 2)
+            set xcor  (d  * (0.5 + col))  - ( world-width / 2 )
+            set ycor  ( world-height / 2) - (d * (0.5 + row))
+            set col col + 1
+            if col > row-col-max[
+              set col 0
+              set row row + 1
+            ]
           ]
-          set level-base level-base + row + 1
         ]
     ])
 end
@@ -94,6 +92,7 @@ to update-appearance-of [an-employee]
       [set hidden? false]
     set shape "square"
     set size (competence / 100)
+
     ;;set color 75
     set color scale-color green halo 30 70
     if breed = CEOs[
@@ -552,7 +551,7 @@ OrgLayout
 not all (except leaves) are managers
 it's a bit risky to use sliders for calculation
 implement continuous bias
-change halo coloring scheme
+change halo coloring scheme (rainbow instead of gradient, probabaly the option to choose)
 implement grid layout
 
 ## CAVEATS
