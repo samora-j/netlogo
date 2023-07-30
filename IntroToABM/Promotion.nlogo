@@ -1,10 +1,11 @@
 extensions [ nw ]
-turtles-own [org-level org-weight competence bias discernment halo score]
-globals [N candidates selected-candidate max-org-competence abs-org-competence org-competence]
+turtles-own [org-level org-weight competence bias discernment halo score ever-selected]
+globals [N candidates selected-candidate max-org-competence abs-org-competence org-competence TraitVisualisation]
 breed [employees employee]
 breed [CEOs CEO]
 breed [vacancies vacancy]
 breed [externals external]
+
 
 
 to SetupOrg
@@ -57,6 +58,7 @@ to create-heirarchy-part [level manager]
       create-link-to manager
       set org-level level
       set org-weight 0
+      set ever-selected false
       set manager self
       let reporting-chain nw:turtles-on-path-to one-of CEOs
       foreach reporting-chain[
@@ -90,11 +92,44 @@ to update-appearance-of [an-employee]
     ifelse breed = externals
       [set hidden? true]
       [set hidden? false]
-    set shape "square"
+    ifelse ever-selected = true [
+      (ifelse
+        org-level = 2 [set shape "triangle"]
+        org-level = 3 [set shape "square"]
+        org-level = 4 [set shape "pentagon"]
+        org-level = 5 [set shape "circle"]
+      )
+    ]
+    [
+      (ifelse
+        org-level = 2 [set shape "triangle 2"]
+        org-level = 3 [set shape "square 2"]
+        org-level = 4 [set shape "star"]
+        org-level = 5 [set shape "circle 2"]
+      )
+
+    ]
     set size (competence / 100)
-    ;; ========================= set color
-    ;;set color 75
-    set color scale-color green halo 30 70
+    (ifelse
+      TraitVisualisation = "Green"[
+        set color scale-color green halo 30 70
+      ]
+      TraitVisualisation = "Rainbow"[
+        let halo-strata floor ( halo / 10 )
+        (ifelse
+          halo-strata = 0 [set color red]
+          halo-strata = 1 [set color orange]
+          halo-strata = 2 [set color yellow]
+          halo-strata = 3 [set color green]
+          halo-strata = 4 [set color lime]
+          halo-strata = 5 [set color cyan]
+          halo-strata = 6 [set color sky]
+          halo-strata = 7 [set color blue]
+          halo-strata = 8 [set color violet]
+          halo-strata = 9 [set color magenta]
+        )
+      ])
+
     if breed = CEOs[
       set color red
     ]
@@ -163,11 +198,11 @@ to select-candidate-by [recruiting-manager]                                     
     RecruitmentStrategy = "Affinity"[
       select-candidate-by-affinity recruiting-manager
     ]
-    RecruitmentStrategy = "Binary Discernment"[
-      select-candidate-by-binary-discernment recruiting-manager
+    RecruitmentStrategy = "Affinity or Competence"[
+      select-candidate-by-affinity-or-competence recruiting-manager
     ]
-    RecruitmentStrategy = "Continuous Discernment"[
-      select-candidate-by-continuous-discernment recruiting-manager
+    RecruitmentStrategy = "Discernment"[
+      select-candidate-by-discernment recruiting-manager
     ]
     [
       select-candidate-by-random
@@ -175,7 +210,8 @@ to select-candidate-by [recruiting-manager]                                     
     ])
 
   ask selected-candidate[
-    set shape "circle"
+    ;; Used to change apperance, could also be used for debugging
+    set ever-selected true
   ]
 end
 
@@ -194,7 +230,7 @@ to select-candidate-by-affinity [recruiting-manager]                            
   set selected-candidate one-of candidates with-min [score]
 end
 
-to select-candidate-by-binary-discernment [recruiting-manager]                    ;; Dependingon on if the recruiting managers discernment trait is high or low,
+to select-candidate-by-affinity-or-competence [recruiting-manager]                ;; Dependingon on if the recruiting managers discernment trait is high or low,
   ifelse [discernment] of recruiting-manager > 50                                 ;; they either select the candidate most similar to them (regarding halo),
     [ set selected-candidate one-of candidates with-max [competence] ]            ;; or select the most competent candidate.
     [ ask candidates[
@@ -203,10 +239,14 @@ to select-candidate-by-binary-discernment [recruiting-manager]                  
       set selected-candidate one-of candidates with-min [score] ]
 end
 
-to select-candidate-by-continuous-discernment [recruiting-manager]                ;; use both competence and affiliation
-  ask candidates[
-      set score abs (100 - ( halo - [halo] of recruiting-manager ))
-      ]
+to select-candidate-by-discernment [recruiting-manager]                           ;; Thew recruiting managers discernment trait decides how likely it is that
+  ask candidates[                                                                 ;; they can discern between the competence trait and halo traits of the candidates.
+    ;; Create a diff normally distrubuted 0 to 100 mean 50
+    let diff ( (competence - halo) + 100 ) / 2
+    ifelse diff < [discernment] of recruiting-manager
+    [ set score competence ]
+    [ set score halo ]
+  ]
   set selected-candidate one-of candidates with-max [score]
 end
 
@@ -274,10 +314,9 @@ to place-selected-candidate-in [the-vacancy recruiting-manager]
       ]
     ]
     update-appearance-of self
-    set shape "circle"
   ]
 
-  if is-internal-recruitment[                                                                ;; If the selected candidate is internal, we place the next vacancy in it's spot
+  if is-internal-recruitment[                                    ;; If the selected candidate is internal, we place the next vacancy in it's spot
     ask the-vacancy[
       set xcor next-vacancy-x
       set ycor next-vacancy-y
@@ -326,6 +365,7 @@ end
 
 
 to Go
+  set TraitVisualisation "Rainbow"
   if count vacancies = 0[
     create-a-vacancy
   ]
@@ -412,9 +452,9 @@ NIL
 
 BUTTON
 15
-305
+330
 185
-338
+363
 Go once
 Go
 NIL
@@ -429,9 +469,9 @@ NIL
 
 BUTTON
 15
-260
+285
 185
-295
+320
 Setup Employees
 SetupEmployees
 NIL
@@ -445,9 +485,9 @@ NIL
 1
 
 MONITOR
+125
 130
-130
-187
+182
 175
 N
 N
@@ -457,37 +497,38 @@ N
 
 CHOOSER
 15
-205
-185
-250
+230
+192
+275
 RecruitmentStrategy
 RecruitmentStrategy
-"Competence" "Random" "Affinity" "Binary Discernment" "Continuous Discernment"
-2
+"Competence" "Random" "Affinity" "Affinity or Competence" "Discernment"
+0
 
 PLOT
 195
 540
 710
 690
-Competence
+Organisation Competence and Diversity
 NIL
 NIL
 0.0
 10.0
 0.0
-10.0
+100.0
 true
-false
+true
 "" ""
 PENS
-"default" 1.0 0 -16777216 true "" "plot org-competence"
+"competence" 1.0 0 -16777216 true "" "plot org-competence"
+"diversity" 1.0 0 -13840069 true "" "plot  variance [halo] of employees"
 
 BUTTON
 15
-350
+375
 185
-383
+408
 Go
 Go
 T
@@ -503,7 +544,7 @@ NIL
 PLOT
 720
 10
-1225
+920
 260
 Top Level Diversity
 NIL
@@ -521,7 +562,7 @@ PENS
 PLOT
 720
 280
-1230
+920
 525
 Bottom Level Diversity
 NIL
@@ -547,60 +588,118 @@ OrgLayout
 2
 
 @#$#@#$#@
-## TODO
-not all (except leaves) are managers
-it's a bit risky to use sliders for calculation
-implement continuous bias
-change halo coloring scheme (rainbow instead of gradient, probabaly the option to choose)
-implement grid layout
-
-## CAVEATS
-We only recuit externally at the lowest level, then only external candidates are considered.
-We do not consider lateral moves or demotion
-Changing the layou of the org does not change the structure, only the vidual representation
-
 ## WHAT IS IT?
 
-(a general understanding of what the model is trying to show or explain)
+A model to explore how different ways to select employees for promotion, might impact the composition of the overall organisation.
 
 ## HOW IT WORKS
 
-(what rules the agents use to create the overall behavior of the model)
+First an organisation is set up.
+Then when the model is run, it does the following:
 
+* Check if there are vacancies
 
-Check if there are vacancies,
-if there are none, create a vacancy by selecting an employee at random and replacing with a vacancy.
-Recruit, either internally externally
+* If there are none, create a vacancy by selecting an employee at random and replacing with a vacancy.
+
+* Recruit, internally if the vacancy is on anything but the bottom level, otherwise externally.
+
+* In the recruitment, the recruiting managers compare the candidates (existing internal employees or in the external case, temporarily spawned invisible external candidates)
+
+* The way by which the sucessful candidate is chosen is one of the following:
+
+	- **Competence:** This represents the best case situation, omniscient recruiting managers, who are "blind" to the halo trait. This results in high competence paired with diversity in regards the the halo trait.
+
+	- **Random:** This represents the worst case, choosing randomly who to recruit, this result in lowe competence and diversity in the halo trait.
+
+	- **Affinity:** In this strategy the recruiting manager selects the candidate most similar to them in regards to the halo trait, not paying any attention to competence.
+
+	- **Affinity or Competence:** This represents a world where half of the recruiting managers use the strategy "Competence" and the other half "Affinity. 
+
+	- **Discernment:** Perhaps more realistic than those above, this strategy means that the "Discernment trait" that all employees (hence also all managers) are assigned in a similar fashion to the competence and halo traits, decides how likely it is that a recruiting manager can discern between the competence trait and halo traits of the candidates,
 
 
 
 ## HOW TO USE IT
 
-(how to use the model, including a description of each of the items in the Interface tab)
+* By selecting _Number of levels_ and _Team Size_ you define the structure of the organisation. Team size is the same for all teams, both bottom level teams and management teams alike.
+
+* Use _OrgLayout_ to select how the organisation will be visualised.
+**This has no effect in how the model works**, but might help you visually see certain phenomena.
+
+	- "Spring Network" is useful for small organisations.
+
+	- "Radial Network" might help look at clustering when modelling bigger organisations,
+
+	- "Grid" is best for general use with bigger organisations.
+
+* Then you click _Setup Org_ to create and the organisation and layout all employees in the world. You can see the total numbers of employees as _N_. If you have selected a network layout, the top manager (CEO) will be visible as a red dot. And all reporting lines will also be visible. If you instead chose the grid layot this elements are hidden.
+
+* Now, the model is ready to run. To run it once, and perform one recruitment, you can press _go once_. After that you will see that the shape for one employee has been changed to a filled shape.
+
+* To run the model continuously and see how things develop, you can press _go_ button.
+
+* While the model is running you can change the selected _RecruitmentStrategy_ and all upcoming recruitments will be made with that strategy,
+
+* If you want to start over, you can press _Setup Employees_. This will not change the organisation structure, but it will reset the properties of all the employees to the default settings. 
 
 ## THINGS TO NOTICE
 
-(suggested things for the user to notice while running the model)
+What is visualised in the world:
+
+* The shape of the employees varies by the organisation level. In the grid view, the employees are laid out starting with the top level in the top left corner. Moving downwards in a sweeping pattern going throug all levels sequentially.
+
+* When the organisation is created, when a set of external candidates are created, or when the button _Setup Employees_ is pressed, all employees are assigned two traits by random normal distribution: _Competence_ and _Halo_. Halo is a placeholder for any kind of trait that does not affect work as directly as competence. But is yet salient.These two traits are visualised as such:
+
+	- Comptence is shown in the size of each employee.
+
+	- Halo is represented by the different colors of the employees
+
+So when running the model, you can observe how different recruitment strategies affect the distrubution of sizes and colors.
+
 
 ## THINGS TO TRY
 
-(suggested things for the user to try to do (move sliders, switches, etc.) with the model)
+Run the model and see how different recruitment strategies affect the overall competence in the organisation. 
+The _Organisation Competence_ value plotted is calculated by weighting the competence trait of each employee by multiplying by the number of employees "in their charge" and then adding them up.
+
+You can also observere the distribution of the halo trait in the top level management on the _Top Level Diversity_ graph. I you have the model running, and the recruitment strategy "Affinity" selected. This distrubution typically settles down on one of the three central bins in the distribution. When it settles, you can press _Setup Employees_ to restart the model with a random distribution of traits, you can then see that the distribution settles down again, but not necesarily with a peak in the center.
 
 ## EXTENDING THE MODEL
 
-(suggested things to add or change in the Code tab to make the model more complicated, detailed, accurate, etc.)
+In many ways, this model is just a starting point that might help model different recruitment heuristics, so implementing different strategies for the recruiting manager is the most obviuod extension.
+
+The aim when I started building this model was to include a property in each employee that records their experience of the recruitments that take place in their part of the organisation. This variable holding "percieved fairness" could be used as a parameter to motivate employees to leave the organisation. An employee would only "experience" recruitments in their own team and their own managers team, and a recruitment would positively affect their "percieved fairness" if the employee would have reached the same verdict as the recruiting manager.
+
+This fairness score is an extension that there are however several things that I think could improve the quality of the model as it is today:
+
+* Calibrating the probablity of employees leaving with data from real workd organisations. Idelly stratified by organisation level. If in the real world there is less mobility in hihger levels, that would perhaps re-enforce the tendency shown already in this model for diversity to be higher in the lowest organisation level.
+
+* In this model there are no seniors who are not managers, this makes the model much easier to build. But has low face validity.
+
+* We only recuit externally at the lowest level, then only external candidates are considered. To better reflect the real world, externals could be added to the candidate pool also on higher levels.
+
+* We do not consider lateral moves or demotions, these should be added with a suitable (lower) probability to better reflect real organisations.
+
+* The way overall competence is measured, weighting managers by their influence, has some face value, but is utterly arbitrary.
+
+Also, if anyone were to really test these different recruitment strategies, more/better metrics would perhaps needed. And perhaps the ability to run a certain amout of ticks or until a certain metric has stabilised. It would be interesting to run experiments with BehaviourSpace to compare different recruitment strategies.
+
+What would interest me the most, is to look into research on how we assess candidates and see if findings there can inspire/inform simplified versions of these selection heursitics.
 
 ## NETLOGO FEATURES
 
-(interesting or unusual features of NetLogo that the model uses, particularly in the Code tab; or where workarounds were needed for missing features)
+Recursion is used.
+Some sliders are not only used to setup but also referenced during the run, this feels a bit risky.
+
+I struggled **a lot** with laying out the agents on a grid. I have used modulus for similar things in the past (in other languages). But could not get it right. Even without the mod operation, it's still nog right. Would be nice to see someone do it properly.
 
 ## RELATED MODELS
 
-(models in the NetLogo Models Library and elsewhere which are of related interest)
+My inability to find similar models can mean that this is not a good way to model this phenomenon. There might also be models like this, and better, in the drawers out there.
 
 ## CREDITS AND REFERENCES
 
-(a reference to the model's URL on the web if it has one, as well as any other necessary credits, citations, and links)
+This was created from scratch by marcus@samora.se and stackoverflow :)
 @#$#@#$#@
 default
 true
